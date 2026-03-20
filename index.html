@@ -53,6 +53,7 @@
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
         .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #64748b; }
         
+        html { scroll-behavior: smooth; }
         body { transition: background-color 0.3s ease, color 0.3s ease; }
         
         .list-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); transform-origin: center; }
@@ -78,11 +79,11 @@
 
     <script type="text/babel">
         const MY_CONFIG = {
-            wechatQR: "wechat-qr.png",   
-            alipayQR: "alipay-qr.png",   
-            wechatId: "YourWechat_ID",       
-            email: "your-email@example.com", 
-            authorName: "表格整理 Pro"       
+            wechatQR: "wechat-qr.jpg",   
+            alipayQR: "alipay-qr.jpg",   
+            wechatId: "ktsp007（一周宅七天）",       
+            email: "1578728963@qq.com", 
+            authorName: "i人小吴"       
         };
 
         const { useState, useEffect, useCallback, useRef } = React;
@@ -270,7 +271,6 @@
             );
         };
 
-        // 💡 核心升级：按照红线要求的瀑布流组合网格，且使用 object-contain 防裁切
         const ImageGallery = ({ images, item, onImageClick }) => {
             const total = images.length;
             if (total === 0) return null;
@@ -279,7 +279,6 @@
                 <div 
                     key={idx}
                     onClick={() => onImageClick(img)} 
-                    // 添加淡淡的底色与圆角，搭配 object-contain 视觉更佳
                     className={`img-zoom-container relative bg-slate-50 dark:bg-[#0f172a] rounded-xl border border-slate-200/60 dark:border-white/5 flex items-center justify-center overflow-hidden cursor-zoom-in shadow-sm p-1.5 ${className}`}
                 >
                     <img src={img} className="hero-img object-contain w-full h-full drop-shadow-sm rounded-lg" alt="附图" />
@@ -299,7 +298,6 @@
                 </div>
             );
 
-            // 1张图：占满全屏
             if (total === 1) {
                 return (
                     <div className="w-full h-full">
@@ -307,7 +305,6 @@
                     </div>
                 );
             }
-            // 2张图：上下等宽并排
             if (total === 2) {
                 return (
                     <div className="flex flex-col gap-3 w-full h-full">
@@ -316,7 +313,6 @@
                     </div>
                 );
             }
-            // 3张图：1大 (上满宽) + 2小 (下并列分享) —— 完美契合您的红线要求
             if (total === 3) {
                 return (
                     <div className="flex flex-col gap-3 w-full h-full">
@@ -328,7 +324,6 @@
                     </div>
                 );
             }
-            // 4张图：1大 + 3小
             if (total === 4) {
                 return (
                     <div className="flex flex-col gap-3 w-full h-full">
@@ -341,7 +336,6 @@
                     </div>
                 );
             }
-            // 5张及以上：1大 + 4小
             return (
                 <div className="flex flex-col gap-3 w-full h-full">
                     {renderImg(images[0], 0, "w-full min-h-[250px] max-h-[400px]")}
@@ -356,6 +350,8 @@
         };
 
         const WebCardView = ({ currentData, searchTerm, onImageClick }) => {
+            const [activeSection, setActiveSection] = useState('');
+
             const generateWebData = () => {
                 const { grid, maxCol, images, links, mergeMap, richTexts } = currentData;
                 if (!grid || grid.length <= 1) return { mainGroups: [], outerItems: [] };
@@ -417,7 +413,6 @@
                         if (hasSeenData) emptyCount++;
                     } else {
                         hasSeenData = true;
-                        // 核心修复：连续≥2行无数据才判定为外围附表，避免误伤主表内的小空行
                         if (emptyCount >= 2) { 
                             mainTableEndRow = r - emptyCount;
                             break;
@@ -476,21 +471,17 @@
                     }
                 }
 
-                // 核心修复：无死角的子集剔除算法 (Subset Deduplication)
-                // 完全抹杀因为部分列横向/垂直合并而产生的无标题“幽灵行”重复卡片
                 const uniqueRecords = [];
                 for (let i = 0; i < rawRecords.length; i++) {
                     let isRedundant = false;
                     for (let j = 0; j < rawRecords.length; j++) {
                         if (i !== j) {
-                            // 只要内容是另一个卡片的真子集，直接剔除（不管类别名是否匹配错乱）
                             const isTextSubset = rawRecords[i].fields.every(fi => 
                                 rawRecords[j].fields.some(fj => fj.value === fi.value)
                             );
                             const isImageSubset = rawRecords[i].images.every(img => rawRecords[j].images.includes(img));
                             
                             if (isTextSubset && isImageSubset) {
-                                // 长度完全一样时，保留标题解析更完整的那个
                                 if (rawRecords[i].fields.length === rawRecords[j].fields.length && rawRecords[i].images.length === rawRecords[j].images.length) {
                                     const iDefaultLabels = rawRecords[i].fields.filter(f => f.colName.startsWith('属性列')).length;
                                     const jDefaultLabels = rawRecords[j].fields.filter(f => f.colName.startsWith('属性列')).length;
@@ -501,7 +492,6 @@
                                         if (i > j) { isRedundant = true; break; }
                                     }
                                 } else if (rawRecords[i].fields.length <= rawRecords[j].fields.length && rawRecords[i].images.length <= rawRecords[j].images.length) {
-                                    // 严格被包含的子集残缺卡片，直接抛弃
                                     isRedundant = true; break;
                                 }
                             }
@@ -529,6 +519,36 @@
 
             const { mainGroups, outerItems } = generateWebData();
 
+            useEffect(() => {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            setActiveSection(entry.target.id);
+                        }
+                    });
+                }, { rootMargin: '-180px 0px -50% 0px' });
+
+                mainGroups.forEach((_, idx) => {
+                    const el = document.getElementById(`section-main-${idx}`);
+                    if (el) observer.observe(el);
+                });
+                if (outerItems.length > 0) {
+                    const el = document.getElementById('section-outer');
+                    if (el) observer.observe(el);
+                }
+
+                return () => observer.disconnect();
+            }, [mainGroups.length, outerItems.length]);
+
+            const scrollToSection = (id) => {
+                const el = document.getElementById(id);
+                if (el) {
+                    const y = el.getBoundingClientRect().top + window.scrollY - 160; 
+                    window.scrollTo({ top: y, behavior: 'smooth' });
+                    setActiveSection(id);
+                }
+            };
+
             if (mainGroups.length === 0 && outerItems.length === 0) {
                 return (
                     <div className="py-32 text-center flex flex-col items-center">
@@ -542,92 +562,131 @@
             }
 
             return (
-                <div className="space-y-16 mt-4 w-full">
+                <div className="flex flex-col md:flex-row gap-6 lg:gap-10 w-full max-w-[1600px] mx-auto items-start">
                     
-                    {currentData.images['global'] && currentData.images['global'].length > 0 && (
-                        <section className="animate-in fade-in duration-500">
-                            <div className="mb-6 flex items-center pb-2">
-                                <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">附件媒体库</h2>
-                            </div>
-                            <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide">
-                                {currentData.images['global'].map((img, i) => (
-                                    <div key={i} className="img-zoom-container flex-shrink-0 relative bg-white dark:bg-darkcard rounded-2xl border border-slate-200/60 dark:border-darkborder w-40 h-40 flex items-center justify-center p-2 shadow-sm group" onClick={() => onImageClick(img)}>
-                                        <img src={img} className="hero-img object-contain w-full h-full" />
-                                        <div className="img-controls absolute bottom-2 flex space-x-1 z-10">
-                                            <button onClick={(e) => { e.stopPropagation(); downloadFile(img, `attachment_${i}.png`); }} className="p-1.5 bg-black/70 backdrop-blur text-white rounded-md hover:bg-blue-500 transition-colors" title="下载原图"><Download size={14} /></button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-                    )}
-
-                    {/* 主版块区 */}
-                    {mainGroups.map((group, gIdx) => (
-                        <section key={gIdx} className="animate-in fade-in duration-500" style={{animationDelay: `${gIdx * 50}ms`}}>
-                            <div className="mb-6 flex items-center border-b border-slate-200 dark:border-white/10 pb-3">
-                                <div className="w-1.5 h-6 bg-blue-600 rounded-full mr-3"></div>
-                                <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center">
-                                    <span className="text-blue-600 mr-2">{gIdx + 1}.</span>
-                                    {group.category}
-                                </h2>
-                            </div>
-
-                            <div className="flex flex-col gap-6 w-full">
-                                {group.items.map((item, idx) => (
-                                    <div key={idx} className="list-card bg-white dark:bg-darkcard border border-slate-200/80 dark:border-darkborder rounded-2xl overflow-hidden flex flex-col lg:flex-row shadow-sm">
-                                        
-                                        {/* 左侧多媒体区 */}
-                                        {item.images.length > 0 && (
-                                            <div className="relative w-full lg:w-[320px] xl:w-[400px] flex-shrink-0 bg-[#f8fafc] dark:bg-[#0b101e] border-b lg:border-b-0 lg:border-r border-slate-100 dark:border-darkborder p-5 flex flex-col">
-                                                <ImageGallery images={item.images} item={item} onImageClick={onImageClick} />
+                    <div className="flex-1 space-y-16 mt-4 w-full min-w-0 pb-20">
+                        {currentData.images['global'] && currentData.images['global'].length > 0 && (
+                            <section className="animate-in fade-in duration-500">
+                                {/* 极简标题样式 - 媒体库 */}
+                                <div className="mb-4 flex items-center pl-1">
+                                    <div className="w-1.5 h-6 bg-slate-400 rounded-full mr-3"></div>
+                                    <h2 className="text-xl font-bold text-slate-800 dark:text-white tracking-tight">附件媒体库</h2>
+                                </div>
+                                <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide">
+                                    {currentData.images['global'].map((img, i) => (
+                                        <div key={i} className="img-zoom-container flex-shrink-0 relative bg-white dark:bg-darkcard rounded-2xl border border-slate-200/60 dark:border-darkborder w-40 h-40 flex items-center justify-center p-2 shadow-sm group" onClick={() => onImageClick(img)}>
+                                            <img src={img} className="hero-img object-contain w-full h-full" />
+                                            <div className="img-controls absolute bottom-2 flex space-x-1 z-10">
+                                                <button onClick={(e) => { e.stopPropagation(); downloadFile(img, `attachment_${i}.png`); }} className="p-1.5 bg-black/70 backdrop-blur text-white rounded-md hover:bg-blue-500 transition-colors" title="下载原图"><Download size={14} /></button>
                                             </div>
-                                        )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        )}
 
-                                        {/* 右侧内容区：垂直单列排版 */}
-                                        <div className="p-6 lg:p-8 flex-1 w-full overflow-hidden">
-                                            <div className="flex flex-col gap-6 w-full">
+                        {mainGroups.map((group, gIdx) => (
+                            <section key={gIdx} id={`section-main-${gIdx}`} className="animate-in fade-in duration-500 scroll-mt-40" style={{animationDelay: `${gIdx * 50}ms`}}>
+                                {/* 极简标题样式 - 完全匹配截图 (蓝线 + 纯文本) */}
+                                <div className="mb-4 flex items-center pl-1">
+                                    <div className="w-1.5 h-6 bg-blue-600 rounded-full mr-3"></div>
+                                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center tracking-tight">
+                                        <span className="text-blue-600 mr-2">{gIdx + 1}.</span>
+                                        {group.category}
+                                    </h2>
+                                </div>
+
+                                <div className="flex flex-col gap-6 w-full">
+                                    {group.items.map((item, idx) => (
+                                        <div key={idx} className="list-card bg-white dark:bg-darkcard border border-slate-200/80 dark:border-darkborder rounded-2xl overflow-hidden flex flex-col lg:flex-row shadow-sm">
+                                            {item.images.length > 0 && (
+                                                <div className="relative w-full lg:w-[320px] xl:w-[400px] flex-shrink-0 bg-[#f8fafc] dark:bg-[#0b101e] border-b lg:border-b-0 lg:border-r border-slate-100 dark:border-darkborder p-5 flex flex-col">
+                                                    <ImageGallery images={item.images} item={item} onImageClick={onImageClick} />
+                                                </div>
+                                            )}
+                                            <div className="p-6 lg:p-8 flex-1 w-full overflow-hidden">
+                                                <div className="flex flex-col gap-6 w-full">
+                                                    {item.fields.map((field, fIdx) => (
+                                                        <FieldBlock key={fIdx} field={field} />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        ))}
+
+                        {outerItems.length > 0 && (
+                            <section id="section-outer" className="mt-20 pt-4 animate-in fade-in duration-500 scroll-mt-40">
+                                {/* 极简标题样式 - 外围数据 */}
+                                <div className="mb-4 flex items-center pl-1">
+                                    <div className="w-1.5 h-6 bg-slate-400 rounded-full mr-3"></div>
+                                    <h2 className="text-xl font-bold text-slate-600 dark:text-slate-400 flex items-center tracking-tight">
+                                        附加与外围数据表
+                                    </h2>
+                                </div>
+                                <div className="flex flex-col gap-4 w-full">
+                                    {outerItems.map((item, idx) => (
+                                        <div key={idx} className="bg-slate-50 dark:bg-darkcard border border-slate-200/80 dark:border-darkborder rounded-2xl p-6 shadow-sm flex flex-col md:flex-row gap-6 items-start hover:shadow-md transition-shadow">
+                                            {item.images.length > 0 && (
+                                                <div className="w-full md:w-[300px] shrink-0">
+                                                    <ImageGallery images={item.images} item={item} onImageClick={onImageClick} />
+                                                </div>
+                                            )}
+                                            <div className="flex-1 flex flex-col gap-6 w-full">
                                                 {item.fields.map((field, fIdx) => (
                                                     <FieldBlock key={fIdx} field={field} />
                                                 ))}
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-                    ))}
+                                    ))}
+                                </div>
+                            </section>
+                        )}
+                    </div>
 
-                    {/* 外围数据区 */}
-                    {outerItems.length > 0 && (
-                        <section className="mt-20 pt-8 border-t-2 border-dashed border-slate-200 dark:border-darkborder animate-in fade-in duration-500">
-                            <div className="mb-6 flex items-center pb-2">
-                                <h2 className="text-xl font-bold text-slate-600 dark:text-slate-400 flex items-center">
-                                    <span className="mr-2">📌</span> 附加与外围数据表
-                                </h2>
+                    {(mainGroups.length > 0 || outerItems.length > 0) && (
+                        <div className="hidden md:block w-48 lg:w-64 shrink-0 sticky top-[160px] self-start max-h-[calc(100vh-180px)] overflow-y-auto custom-scrollbar animate-in fade-in duration-500 pr-2">
+                            <div className="bg-white/60 dark:bg-darkcard/60 backdrop-blur-xl border border-slate-200/80 dark:border-darkborder rounded-2xl p-4 lg:p-5 shadow-sm">
+                                <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-4 flex justify-between items-center">
+                                    <span>导航目录</span>
+                                    <span className="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded-full text-[10px]">
+                                        共 {mainGroups.length + (outerItems.length > 0 ? 1 : 0)} 项
+                                    </span>
+                                </h3>
+                                <ul className="space-y-1.5 border-l-2 border-slate-100 dark:border-darkborder ml-1">
+                                    {mainGroups.map((group, idx) => {
+                                        const id = `section-main-${idx}`;
+                                        const isActive = activeSection === id;
+                                        return (
+                                            <li key={idx}>
+                                                <button
+                                                    onClick={() => scrollToSection(id)}
+                                                    className={`w-full text-left pl-4 py-1.5 text-sm transition-all relative group/nav ${isActive ? 'text-blue-600 font-bold dark:text-blue-400' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                                                >
+                                                    {isActive && <div className="absolute left-[-2px] top-0 bottom-0 w-0.5 bg-blue-600 rounded-r-full"></div>}
+                                                    <div className="truncate pr-2" title={group.category}>{idx + 1}. {group.category}</div>
+                                                </button>
+                                            </li>
+                                        );
+                                    })}
+                                    {outerItems.length > 0 && (
+                                        <li className="pt-2 mt-2 border-t border-slate-100 dark:border-white/5">
+                                            <button
+                                                onClick={() => scrollToSection('section-outer')}
+                                                className={`w-full text-left pl-4 py-1.5 text-sm transition-all relative ${activeSection === 'section-outer' ? 'text-blue-600 font-bold dark:text-blue-400' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                                            >
+                                                {activeSection === 'section-outer' && <div className="absolute left-[-2px] top-0 bottom-0 w-0.5 bg-blue-600 rounded-r-full"></div>}
+                                                <div className="truncate flex items-center">📌 外围数据</div>
+                                            </button>
+                                        </li>
+                                    )}
+                                </ul>
                             </div>
-                            
-                            <div className="flex flex-col gap-4 w-full">
-                                {outerItems.map((item, idx) => (
-                                    <div key={idx} className="bg-slate-50 dark:bg-darkcard border border-slate-200/80 dark:border-darkborder rounded-2xl p-6 shadow-sm flex flex-col md:flex-row gap-6 items-start hover:shadow-md transition-shadow">
-                                        
-                                        {/* 外围多媒体区 */}
-                                        {item.images.length > 0 && (
-                                            <div className="w-full md:w-[300px] shrink-0">
-                                                <ImageGallery images={item.images} item={item} onImageClick={onImageClick} />
-                                            </div>
-                                        )}
-                                        
-                                        <div className="flex-1 flex flex-col gap-6 w-full">
-                                            {item.fields.map((field, fIdx) => (
-                                                <FieldBlock key={fIdx} field={field} />
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
+                        </div>
                     )}
+                    
                 </div>
             );
         };
@@ -969,6 +1028,23 @@
                 </header>
             );
 
+            // ==========================================
+            // 🛡️ 防盗版与安全防护系统 
+            // ==========================================
+            /*
+            const ALLOWED_DOMAINS = ['data-canvas-one.vercel.app', 'localhost', '127.0.0.1'];
+            if (!ALLOWED_DOMAINS.includes(window.location.hostname) && window.location.hostname !== "") {
+                document.body.innerHTML = '<div style="height:100vh;display:flex;align-items:center;justify-content:center;font-family:sans-serif;color:#ef4444;font-size:24px;font-weight:bold;background:#f8fafc;">⚠️ 盗版可耻，请访问正版原始地址使用。</div>';
+                throw new Error("Unauthorized domain execution prevented.");
+            }
+            document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'C' || e.key === 'c' || e.key === 'J' || e.key === 'j')) || (e.ctrlKey && (e.key === 'U' || e.key === 'u' || e.key === 'S' || e.key === 's'))) {
+                    e.preventDefault();
+                }
+            });
+            */
+
             if (!workbookData) {
                 return (
                 <div className="min-h-screen flex flex-col">
@@ -1048,7 +1124,7 @@
                         </div>
                     </div>
 
-                    <main className="max-w-[100%] w-full mx-auto px-6 md:px-12 py-8 flex-1 relative z-10">
+                    <main className="w-full px-6 md:px-12 py-8 flex-1 relative z-10">
                         <WebCardView currentData={currentData} searchTerm={searchTerm} onImageClick={setPreviewImage} />
                     </main>
                     
